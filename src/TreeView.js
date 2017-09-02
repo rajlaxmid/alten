@@ -1,11 +1,16 @@
 import React from 'react';
-import Menu from './Menu';
 import axios from 'axios';
-
+let gTree = [];
 class TreeView extends React.Component {
   constructor(){
      super();
+     
      this.printChild = this.printChild.bind(this);
+     this.recursiveSearch = this.recursiveSearch.bind(this);
+     this.noResultFound = this.noResultFound.bind(this);
+     this.processPattern = this.processPattern.bind(this);
+     this.NameSearch = this.NameSearch.bind(this);
+
      var userTreeViewList = {
         tree: [
           {
@@ -58,73 +63,146 @@ class TreeView extends React.Component {
                         "id": "2_1",
                         "description": "test2_1",
                         "children": [
-                        
-                        ]
+                          {
+                           "node": {
+                                "id": "2_1_1",
+                                "description": "test2_1_1",
+                                "children": [
+                                
+                                ]
+                            }
+                          }
+                      ]
                     }
-                  }
+                  },
+                  {
+                    "node": {
+                         "id": "2_2",
+                         "description": "test2_2",
+                         "children": [
+                           {
+                            "node": {
+                                 "id": "2_2_1",
+                                 "description": "test2_2_1",
+                                 "children": [
+                                 
+                                 ]
+                             }
+                           }
+                       ]
+                     }
+                   }
               ]
             }
           }
         ]
       };
      this.state = {
-       userTreeViewList: userTreeViewList, flag:false, tempUserTreeViewList:userTreeViewList
+       userTreeViewList: userTreeViewList.tree, flag:false, tempUserTreeViewList: userTreeViewList.tree
      }
 
   }
     
   
   printChild(children){
-     console.log(children); 
      return(    
        children.map( (item, i)=> {
           return <ul>
-          <li>{item.node.description}</li>
+          <li key={item.node.description+i}>{item.node.description}</li>
           {item.node.children.length>0 ? this.printChild(item.node.children): null}
           </ul>
        })  
      )
   }
 
-  componentDidMount(){ 
-
-    /*var URL = this.gerUrl();
-    axios.get(URL).then((result)=>{
-       this.setState({  userTreeViewList: {users: result.data.results, page: 1, pagesize: 20}  });*/
-    //})
+  processPattern(){
+    //it removes * from end of patten and returns
+    var pattern= this.refs.myInput.value;
+    var len = pattern.length
+    if(pattern[len-1] === '*')
+    pattern = pattern.substring(0, len-1);
+    return pattern;
   }
+
+  recursiveSearch(children){
+    //it search recursively the children for the pattern, and returns if found 
+    var pattern= this.processPattern();
+    var tree = [];
+    if(children && children.length > 0){
+      children.forEach( (item) => {
+         item.node.description.includes(pattern) ? gTree.push(item) : this.recursiveSearch(item.node.children);
+      });
+    } 
+    return gTree;
+  };
  
-  NameSearch(e){
-    //var pattern=e.target.value;
-    var pattern=this.refs.myInput.value;
-    //if(this.state.flag ==true) this.setState({  userTreeViewList: {tree:this.state.tempUserTreeViewList}  });
-    debugger;
-    var filteredUsers=this.state.userTreeViewList.tree.filter(function(item){ 
-      if(item.node.description.includes(pattern)) return item});
-    this.setState({  userTreeViewList: {tree: filteredUsers}  });
-    //this.state.flag=true; 
+  NameSearch(){
+    //on seachButton click this is called
+    gTree = [];
+    var pattern= this.processPattern();
+    if(pattern)
+    var filteredUsers = [];
+    this.state.userTreeViewList.forEach( (item)=>{
+      if(item.node.description.includes(pattern)){
+        filteredUsers.push(item);
+        
+      }
+      else if(item.node.children.length>0){
+        var res = this.recursiveSearch(item.node.children); 
+        if(res.length>0 ) 
+          filteredUsers=res;
+        
+      }
+    })
+    
+
+    this.setState({  userTreeViewList: this.state.userTreeViewList, tempUserTreeViewList: filteredUsers  });
+  
+  }
+
+  noResultFound(){
+    if(this.state.tempUserTreeViewList.length===0)
+      return(
+        <div className="alert alert-danger">
+          <span>No result found</span>
+        </div>
+      )
   }
 
   
    render() {
-    debugger;
-    console.log(this.state.userTreeViewList)
-      if(this.state.userTreeViewList.tree.length === 0){
-
-        return(<h1>Loading...</h1>);
-      }
+    
+    
       return (
         <div>
-          <div className="col-md-5">
-            <input type="text" className="form-control" ref="myInput"  placeholder="Search for names.."/>
-           <button className="btn btn-success" onClick={this.NameSearch.bind(this)}  id="prev">&#x276C;&#x276C; Prev</button> &nbsp; 
-            
-          </div>
+            <h3>Tree View Search</h3>
+            <hr />
+            <div className="row">
+                <div className="col-md-5"> 
+                      <div className="input-group">
+                        <input type="text" 
+                              ref="myInput" 
+                              className="form-control" 
+                              placeholder="Search for..." 
+                        />
+                        <span className="input-group-btn">
+                          <button className="btn btn-success" type="button" onClick={this.NameSearch.bind(this)}>
+                            <span className="glyphicon glyphicon-search"></span> Search
+                          </button>
+                        </span>
+                      </div>
+                      {this.noResultFound()}
+                      
+                </div>  
+            </div>    
+
+
+          
           <ul>
             {
-                this.state.userTreeViewList.tree.map( (item, i)=>{
+                this.state.tempUserTreeViewList.map( (item, i)=>{
                   return( 
-                    <li key={i}>
+                    <li key={item.node.description+i}>
                         {item.node.description}
                         {item.node.children.length > 0 ? this.printChild(item.node.children): null}
                     </li>
